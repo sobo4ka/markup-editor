@@ -137,23 +137,33 @@ function validateDoc(md) {
   return hints;
 }
 
+function getGeminiKey() {
+  var key = localStorage.getItem("gemini_api_key");
+  if (!key) {
+    key = window.prompt("Enter your Gemini API key (free at aistudio.google.com):");
+    if (key) localStorage.setItem("gemini_api_key", key.trim());
+  }
+  return key ? key.trim() : null;
+}
+
 function callClaude(prompt) {
-  return fetch("https://api.anthropic.com/v1/messages", {
+  var key = getGeminiKey();
+  if (!key) return Promise.reject(new Error("No API key provided."));
+  return fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=" + key, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "anthropic-dangerous-direct-browser-access": "true" },
-    body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000, messages: [{ role: "user", content: prompt }] })
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
   }).then(function(res) {
-    return res.text();
-  }).then(function(raw) {
-    var data = JSON.parse(raw);
+    return res.json();
+  }).then(function(data) {
     if (data.error) throw new Error(data.error.message);
-    return (data.content || []).map(function(b) { return b.text || ""; }).join("").trim();
+    return ((data.candidates || [])[0]?.content?.parts || []).map(function(p: {text?: string}) { return p.text || ""; }).join("").trim();
   });
 }
 
 export default function App() {
   var taRef = useRef(null);
-  var previewRef = useRef(null);
+  var previewRef = useRef<HTMLDivElement>(null);
   var savedSel = useRef(null);
 
   var u0  = useState(INITIAL);   var md = u0[0];           var setMd = u0[1];
@@ -163,7 +173,7 @@ export default function App() {
   var u4  = useState(true);      var showHints = u4[0];     var setShowHints = u4[1];
   var u5  = useState(true);      var showChallenge = u5[0]; var setShowChallenge = u5[1];
   var u6  = useState(0);         var chalIdx = u6[0];       var setChalIdx = u6[1];
-  var u7  = useState([]);        var history = u7[0];       var setHistory = u7[1];
+  var u7  = useState<{id:number,preview:string,date:string,content:string}[]>([]);        var history = u7[0];       var setHistory = u7[1];
   var u8  = useState("outline"); var panel = u8[0];         var setPanel = u8[1];
   var u9  = useState(false);     var saved = u9[0];         var setSaved = u9[1];
   var u10 = useState(false);     var confirmNew = u10[0];   var setConfirmNew = u10[1];
@@ -206,17 +216,12 @@ useEffect(function() {
     if (!all.length) return;
     var best = null, bestDiff = Infinity;
     for (var i = 0; i < all.length; i++) {
-      var dl = parseInt(all[i].getAttribute("data-line"), 10);
+      var dl = parseInt(all[i].getAttribute("data-line") ?? "0", 10);
       var diff = Math.abs(dl - lineNum);
       if (diff < bestDiff) { bestDiff = diff; best = all[i]; }
     }
     if (best) {
-      // getBoundingClientRect gives position relative to viewport at current scroll.
-      // Adding preview.scrollTop converts it to position relative to preview container top.
-      var previewTop = preview.getBoundingClientRect().top;
-      var elTop = best.getBoundingClientRect().top;
-      var absoluteTop = elTop - previewTop + preview.scrollTop;
-      preview.scrollTop = absoluteTop - preview.clientHeight / 3;
+      preview.scrollTop = (best as HTMLElement).offsetTop - preview.clientHeight / 3;
     }
   }
 
@@ -410,7 +415,7 @@ useEffect(function() {
   var anyErr = conciseErr || bulletErr || shortenErr;
 
   return (
-    <div style={{ display:"flex", flexDirection:"column", height:"100vh", background:bg, color:text, fontFamily:"system-ui,sans-serif", fontSize:14, overflow:"hidden" }}>
+    <div style={{ display:"flex", flexDirection:"column", height:"100vh", background:bg, color:text, fontFamily:"system-ui,sans-serif", fontSize:25, overflow:"hidden" }}>
       <style>{css}</style>
 
       <div style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 12px", background:surface, borderBottom:"1px solid "+border, flexShrink:0, flexWrap:"wrap" }}>
@@ -433,24 +438,24 @@ useEffect(function() {
 
       <div style={{ display:"flex", flex:1, overflow:"hidden" }}>
         {showOutline && (
-          <div style={{ width:190, background:surface, borderRight:"1px solid "+border, display:"flex", flexDirection:"column", flexShrink:0, overflow:"hidden" }}>
+          <div style={{ width:260, background:surface, borderRight:"1px solid "+border, display:"flex", flexDirection:"column", flexShrink:0, overflow:"hidden" }}>
             <div style={{ display:"flex", borderBottom:"1px solid "+border }}>
-              <button style={{ flex:1, padding:"8px 4px", textAlign:"center", cursor:"pointer", fontSize:11, fontWeight:600, color: panel==="outline" ? accent : muted, background:"none", border:"none", borderBottom: panel==="outline" ? "2px solid "+accent : "none" }} onClick={function() { setPanel("outline"); }}>Outline</button>
-              <button style={{ flex:1, padding:"8px 4px", textAlign:"center", cursor:"pointer", fontSize:11, fontWeight:600, color: panel==="history" ? accent : muted, background:"none", border:"none", borderBottom: panel==="history" ? "2px solid "+accent : "none" }} onClick={function() { setPanel("history"); }}>History</button>
+              <button style={{ flex:1, padding:"8px 4px", textAlign:"center", cursor:"pointer", fontWeight:600, color: panel==="outline" ? accent : muted, background:"none", border:"none", borderBottom: panel==="outline" ? "2px solid "+accent : "none" }} onClick={function() { setPanel("outline"); }}>Outline</button>
+              <button style={{ flex:1, padding:"8px 4px", textAlign:"center", cursor:"pointer", fontWeight:600, color: panel==="history" ? accent : muted, background:"none", border:"none", borderBottom: panel==="history" ? "2px solid "+accent : "none" }} onClick={function() { setPanel("history"); }}>History</button>
             </div>
             <div style={{ flex:1, overflowY:"auto", padding:8 }}>
               {panel === "outline"
                 ? headings.length === 0
-                  ? <div style={{ color:muted, fontSize:12, marginTop:8 }}>No headings yet.</div>
+                  ? <div style={{ color:muted, marginTop:8 }}>No headings yet.</div>
                   : headings.map(function(h, i) {
-                      return <div key={i} onClick={function() { jumpToLine(h.line); }} style={{ paddingLeft:(h.level-1)*10, marginBottom:4, fontSize:12, color: h.level===1 ? text : h.level===2 ? accent : muted, fontWeight: h.level<=2 ? 600 : 400, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", cursor:"pointer" }}>{"#".repeat(h.level)} {h.text}</div>;
+                      return <div key={i} onClick={function() { jumpToLine(h.line); }} style={{ paddingLeft:(h.level-1)*10, marginBottom:4, color: h.level===1 ? text : h.level===2 ? accent : muted, fontWeight: h.level<=2 ? 600 : 400, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", cursor:"pointer" }}>{"#".repeat(h.level)} {h.text}</div>;
                     })
                 : history.length === 0
-                  ? <div style={{ color:muted, fontSize:12, marginTop:8 }}>No saved docs yet.</div>
+                  ? <div style={{ color:muted, marginTop:8 }}>No saved docs yet.</div>
                   : history.map(function(h) {
                       return <div key={h.id} style={{ marginBottom:10, cursor:"pointer", padding:"6px 8px", borderRadius:6, background:surface2, border:"1px solid "+border }} onClick={function() { setMd(h.content); }}>
-                        <div style={{ fontSize:10, color:muted, marginBottom:2 }}>{h.date}</div>
-                        <div style={{ fontSize:11, color:text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{h.preview}...</div>
+                        <div style={{ color:muted, marginBottom:2 }}>{h.date}</div>
+                        <div style={{ color:text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{h.preview}...</div>
                       </div>;
                     })
               }
@@ -496,7 +501,7 @@ useEffect(function() {
               onMouseUp={handleEditorClick}
               onKeyUp={handleEditorKeyUp}
             />
-            <div ref={previewRef} style={{ flex:1, overflowY:"auto", padding:20, background:surface, cursor:"pointer" }}>
+            <div ref={previewRef} style={{ flex:1, overflowY:"auto", padding:20, background:surface, cursor:"pointer", position:"relative" }}>
               <style>{css}</style>
               <div className="mdp" onClick={handlePreviewClick} style={{listStyleType:"disc"}} dangerouslySetInnerHTML={{ __html: rendered }} />
             </div>
