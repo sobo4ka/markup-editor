@@ -38,7 +38,7 @@ var TOOLBAR = [
   { label: "Task", title: "Task List", prefix: "- [ ] " },
 ];
 
-var INITIAL = "# Welcome to MD Skill Builder\n\nStart writing Markdown here and see it rendered live on the right!\n\n## Features to try\n- **Live preview** as you type\n- Syntax cheat sheet panel\n- Document outline in the left panel\n- Validation hints below the editor\n- Click any element in the preview to jump to it in the editor\n- Select text and press Concise, Bullets, or Shorten\n\n### Quick example\n\n```js\nconst greet = function(name) { return 'Hello ' + name; };\nconsole.log(greet('World'));\n```\n\n| Feature | Status |\n|---------|--------|\n| Live preview | Done |\n| Cheat sheet | Done |\n| Click-to-navigate | Done |\n| AI tools | Done |\n\n> The best way to learn Markdown is to write a lot of it.\n\nHappy writing!\n";
+var INITIAL = "# Welcome to Viks markup editor\n\nStart writing Markdown here and see it rendered live on the right!\n\n## Features to try\n- **Live preview** as you type\n- Syntax cheat sheet panel\n- Document outline in the left panel\n- Validation hints below the editor\n- Click any element in the preview to jump to it in the editor\n- Select text and press Concise, Bullets, or Shorten\n\n### Quick example\n\n```js\nconst greet = function(name) { return 'Hello ' + name; };\nconsole.log(greet('World'));\n```\n\n| Feature | Status |\n|---------|--------|\n| Live preview | Done |\n| Cheat sheet | Done |\n| Click-to-navigate | Done |\n| AI tools | Done |\n\n> The best way to learn Markdown is to write a lot of it.\n\nHappy writing!\n";
 
 function inlineFmt(s) {
   return s
@@ -414,7 +414,7 @@ useEffect(function() {
       <style>{css}</style>
 
       <div style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 12px", background:surface, borderBottom:"1px solid "+border, flexShrink:0, flexWrap:"wrap" }}>
-        <span style={{ fontWeight:800, fontSize:15, color:accent, marginRight:4 }}>MD Skill Builder</span>
+        <span style={{ fontWeight:800, fontSize:15, color:accent, marginRight:4 }}>Viks markup editor</span>
         {confirmNew
           ? <><span style={{ fontSize:12, color:"#f6ad55" }}>Discard changes?</span>
               <button style={{ ...hBtn, color:"#f6ad55", borderColor:"#f6ad55" }} onClick={function() { setMd("# Untitled\n\n"); setConfirmNew(false); }}>Yes</button>
