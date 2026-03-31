@@ -145,7 +145,7 @@ function getGeminiKey() {
   return key ? key.trim() : null;
 }
 
-function callClaude(prompt) {
+function callClaude(prompt: string) {
   var key = getGeminiKey();
   if (!key) return Promise.reject(new Error("No API key provided."));
   return fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=" + key, {
@@ -156,14 +156,14 @@ function callClaude(prompt) {
     return res.json();
   }).then(function(data) {
     if (data.error) throw new Error(data.error.message);
-    return (data.content || []).map(function(b) { return b.text || ""; }).join("").trim();
+    return (data.content || []).map(function(b: any) { return b.text || ""; }).join("").trim();
   });
 }
 
 export default function App() {
-  var taRef = useRef(null);
-  var previewRef = useRef(null);
-  var savedSel = useRef(null);
+  var taRef = useRef<HTMLTextAreaElement>(null);
+  var previewRef = useRef<HTMLDivElement>(null);
+  var savedSel = useRef<{start:number,end:number}|null>(null);
 
   var u0  = useState(INITIAL);   var md = u0[0];           var setMd = u0[1];
   var u1  = useState(true);      var dark = u1[0];          var setDark = u1[1];
@@ -172,7 +172,7 @@ export default function App() {
   var u4  = useState(true);      var showHints = u4[0];     var setShowHints = u4[1];
   var u5  = useState(true);      var showChallenge = u5[0]; var setShowChallenge = u5[1];
   var u6  = useState(0);         var chalIdx = u6[0];       var setChalIdx = u6[1];
-  var u7  = useState([]);        var history = u7[0];       var setHistory = u7[1];
+  var u7  = useState<{id:number,preview:string,date:string,content:string}[]>([]);        var history = u7[0];       var setHistory = u7[1];
   var u8  = useState("outline"); var panel = u8[0];         var setPanel = u8[1];
   var u9  = useState(false);     var saved = u9[0];         var setSaved = u9[1];
   var u10 = useState(false);     var confirmNew = u10[0];   var setConfirmNew = u10[1];
@@ -215,7 +215,7 @@ useEffect(function() {
     if (!all.length) return;
     var best = null, bestDiff = Infinity;
     for (var i = 0; i < all.length; i++) {
-      var dl = parseInt(all[i].getAttribute("data-line"), 10);
+      var dl = parseInt(all[i].getAttribute("data-line") ?? "0", 10);
       var diff = Math.abs(dl - lineNum);
       if (diff < bestDiff) { bestDiff = diff; best = all[i]; }
     }
