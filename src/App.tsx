@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 var CHALLENGES = [
   { title: "Table Challenge", prompt: "Write a table comparing 3 programming languages (name, type, use case)." },
@@ -40,7 +40,7 @@ var TOOLBAR = [
 
 var INITIAL = "# Welcome to Viks markup editor\n\nStart writing Markdown here and see it rendered live on the right! \n\n## Features to try\n- **Live preview** as you type\n- Syntax cheat sheet panel\n- Document outline in the left panel\n- Validation hints below the editor\n- Click any element in the preview to jump to it in the editor\n- Select text and press Concise, Bullets, or Shorten\n\n### Quick example\n\n```js\nconst greet = function(name) { return 'Hello ' + name; };\nconsole.log(greet('World'));\n```\n\n| Feature | Status |\n|---------|--------|\n| Live preview | Done |\n| Cheat sheet | Done |\n| Click-to-navigate | Done |\n| AI tools | Done |\n\n> The best way to learn Markdown is to write a lot of it.\n\nHappy writing!\n";
 
-function inlineFmt(s) {
+function inlineFmt(s: string) {
   return s
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, "<img alt=\"$1\" src=\"$2\" style=\"max-width:100%\"/>")
@@ -52,14 +52,13 @@ function inlineFmt(s) {
     .replace(/`([^`]+)`/g, "<code>$1</code>");
 }
 
-function parseMarkdown(md) {
+function parseMarkdown(md: string) {
   var lines = md.split("\n");
   var out = "";
   var i = 0;
   while (i < lines.length) {
     var line = lines[i];
     if (line.startsWith("```")) {
-      var lang = line.slice(3).trim() || "text";
       var sl = i;
       i++;
       var code = "";
@@ -70,11 +69,11 @@ function parseMarkdown(md) {
     }
     if (/^\|.+\|/.test(line) && i + 1 < lines.length && /^\|[-| :]+\|/.test(lines[i + 1])) {
       var ts = i;
-      var hdrs = line.split("|").filter(Boolean).map(function(h) { return "<th>" + inlineFmt(h.trim()) + "</th>"; }).join("");
+      var hdrs = line.split("|").filter(Boolean).map(function(h: string) { return "<th>" + inlineFmt(h.trim()) + "</th>"; }).join("");
       i += 2;
       var rows = "";
       while (i < lines.length && /^\|.+\|/.test(lines[i])) {
-        rows += "<tr>" + lines[i].split("|").filter(Boolean).map(function(c) { return "<td>" + inlineFmt(c.trim()) + "</td>"; }).join("") + "</tr>";
+        rows += "<tr>" + lines[i].split("|").filter(Boolean).map(function(c: string) { return "<td>" + inlineFmt(c.trim()) + "</td>"; }).join("") + "</tr>";
         i++;
       }
       out += "<table data-line=\"" + ts + "\"><thead><tr>" + hdrs + "</tr></thead><tbody>" + rows + "</tbody></table>\n";
@@ -119,25 +118,25 @@ function parseMarkdown(md) {
   return out;
 }
 
-function extractHeadings(md) {
-  return md.split("\n").reduce(function(acc, line, i) {
+function extractHeadings(md: string) {
+  return md.split("\n").reduce(function(acc: {level: number, text: string, line: number}[], line: string, i: number) {
     var m = line.match(/^(#{1,6}) (.+)/);
     if (m) acc.push({ level: m[1].length, text: m[2], line: i });
     return acc;
   }, []);
 }
 
-function validateDoc(md) {
+function validateDoc(md: string) {
   var hints = [];
   var h1s = (md.match(/^# .+/gm) || []).length;
   if (h1s === 0) hints.push({ type: "warn", msg: "No H1 heading - best practice is one title per document." });
   if (h1s > 1) hints.push({ type: "warn", msg: "You have " + h1s + " H1 headings - best practice is exactly one." });
   if (/!\[\]\(/.test(md)) hints.push({ type: "warn", msg: "Image(s) missing alt text." });
-  if (md.split("\n").filter(function(l) { return l.length > 120; }).length > 2) hints.push({ type: "tip", msg: "Several lines exceed 120 chars - consider breaking them up." });
+  if (md.split("\n").filter(function(l: string) { return l.length > 120; }).length > 2) hints.push({ type: "tip", msg: "Several lines exceed 120 chars - consider breaking them up." });
   return hints;
 }
 
-function callClaude(prompt) {
+function callClaude(prompt: string) {
   return fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "Content-Type": "application/json", "anthropic-dangerous-direct-browser-access": "true" },
@@ -147,14 +146,14 @@ function callClaude(prompt) {
   }).then(function(raw) {
     var data = JSON.parse(raw);
     if (data.error) throw new Error(data.error.message);
-    return (data.content || []).map(function(b) { return b.text || ""; }).join("").trim();
+    return (data.content || []).map(function(b: {text?: string}) { return b.text || ""; }).join("").trim();
   });
 }
 
 export default function App() {
-  var taRef = useRef(null);
-  var previewRef = useRef(null);
-  var savedSel = useRef(null);
+  var taRef = useRef<HTMLTextAreaElement>(null);
+  var previewRef = useRef<HTMLDivElement>(null);
+  var savedSel = useRef<{start: number, end: number} | null>(null);
 
   var u0  = useState(INITIAL);   var md = u0[0];           var setMd = u0[1];
   var u1  = useState(true);      var dark = u1[0];          var setDark = u1[1];
@@ -163,17 +162,17 @@ export default function App() {
   var u4  = useState(true);      var showHints = u4[0];     var setShowHints = u4[1];
   var u5  = useState(true);      var showChallenge = u5[0]; var setShowChallenge = u5[1];
   var u6  = useState(0);         var chalIdx = u6[0];       var setChalIdx = u6[1];
-  var u7  = useState([]);        var history = u7[0];       var setHistory = u7[1];
+  var u7  = useState<{id: number, preview: string, date: string, content: string}[]>([]);        var history = u7[0];       var setHistory = u7[1];
   var u8  = useState("outline"); var panel = u8[0];         var setPanel = u8[1];
   var u9  = useState(false);     var saved = u9[0];         var setSaved = u9[1];
   var u10 = useState(false);     var confirmNew = u10[0];   var setConfirmNew = u10[1];
   var u11 = useState(false);     var concising = u11[0];    var setConcising = u11[1];
-  var u12 = useState(null);      var conciseErr = u12[0];   var setConciseErr = u12[1];
+  var u12 = useState<string | null>(null);      var conciseErr = u12[0];   var setConciseErr = u12[1];
   var u13 = useState(false);     var bulleting = u13[0];    var setBulleting = u13[1];
-  var u14 = useState(null);      var bulletErr = u14[0];    var setBulletErr = u14[1];
+  var u14 = useState<string | null>(null);      var bulletErr = u14[0];    var setBulletErr = u14[1];
   var u15 = useState(50);        var shortenPct = u15[0];   var setShortenPct = u15[1];
   var u16 = useState(false);     var shortening = u16[0];   var setShortening = u16[1];
-  var u17 = useState(null);      var shortenErr = u17[0];   var setShortenErr = u17[1];
+  var u17 = useState<string | null>(null);      var shortenErr = u17[0];   var setShortenErr = u17[1];
 
 useEffect(function() {
   const saved = localStorage.getItem("md_history");
@@ -199,14 +198,14 @@ useEffect(function() {
     if (ta) savedSel.current = { start: ta.selectionStart, end: ta.selectionEnd };
   }
 
-  function syncPreviewToLine(lineNum) {
+  function syncPreviewToLine(lineNum: number) {
     var preview = previewRef.current;
     if (!preview || lineNum == null) return;
     var all = preview.querySelectorAll("[data-line]");
     if (!all.length) return;
     var best = null, bestDiff = Infinity;
     for (var i = 0; i < all.length; i++) {
-      var dl = parseInt(all[i].getAttribute("data-line"), 10);
+      var dl = parseInt(all[i].getAttribute("data-line") || "0", 10);
       var diff = Math.abs(dl - lineNum);
       if (diff < bestDiff) { bestDiff = diff; best = all[i]; }
     }
@@ -220,7 +219,7 @@ useEffect(function() {
     }
   }
 
-  function jumpToLine(lineNum) {
+  function jumpToLine(lineNum: number) {
     var ta = taRef.current;
     if (!ta || lineNum == null) return;
     var lines = md.split("\n");
@@ -237,6 +236,7 @@ useEffect(function() {
     var availWidth = ta.clientWidth - paddingLeft - paddingRight;
     var canvas = document.createElement("canvas");
     var ctx = canvas.getContext("2d");
+    if (!ctx) return;
     ctx.font = cs.fontWeight + " " + cs.fontSize + " " + cs.fontFamily;
     var totalWrapped = 0;
     for (var li = 0; li < lineNum; li++) {
@@ -269,8 +269,8 @@ useEffect(function() {
     }, 10);
   }
 
-  function handlePreviewClick(e) {
-    var el = e.target;
+  function handlePreviewClick(e: React.MouseEvent<HTMLDivElement>) {
+    var el = e.target as HTMLElement | null;
     while (el && el !== e.currentTarget) {
       if (el.dataset && el.dataset.line !== undefined) {
         jumpToLine(parseInt(el.dataset.line, 10));
@@ -280,7 +280,7 @@ useEffect(function() {
     }
   }
 
-  function applyToolbar(item) {
+  function applyToolbar(item: typeof TOOLBAR[number]) {
     var ta = taRef.current;
     if (!ta) return;
     var start = ta.selectionStart, end = ta.selectionEnd;
@@ -299,7 +299,7 @@ useEffect(function() {
       cursor = start + item.wrap[0].length + content.length + item.wrap[1].length;
     }
     setMd(newText);
-    setTimeout(function() { ta.focus(); ta.setSelectionRange(cursor, cursor); }, 0);
+    setTimeout(function() { if (ta) { ta.focus(); ta.setSelectionRange(cursor, cursor); } }, 0);
   }
 
   function getSelection() {
@@ -309,7 +309,7 @@ useEffect(function() {
     return sel;
   }
 
-  function replaceSelection(sel, replacement) {
+  function replaceSelection(sel: {start: number, end: number}, replacement: string) {
     var ta = taRef.current;
     setMd(md.slice(0, sel.start) + replacement + md.slice(sel.end));
     setTimeout(function() {
@@ -320,10 +320,11 @@ useEffect(function() {
   function handleConcise() {
     var sel = getSelection();
     if (!sel || sel.start === sel.end) { setConciseErr("Select some text first."); setTimeout(function() { setConciseErr(null); }, 3000); return; }
-    var selected = md.slice(sel.start, sel.end).trim();
+    var sel2 = sel;
+    var selected = md.slice(sel2.start, sel2.end).trim();
     setConcising(true); setConciseErr(null);
     callClaude("Rewrite the following text to be concise and clear. Keep the original style. Preserve bullets and tables if present. Remove only fluff and repetitions. Return only the rewritten text.\n\n" + selected)
-      .then(function(r) { if (r) replaceSelection(sel, r); })
+      .then(function(r) { if (r) replaceSelection(sel2, r); })
       .catch(function(e) { setConciseErr(e.message); setTimeout(function() { setConciseErr(null); }, 6000); })
       .then(function() { setConcising(false); });
   }
@@ -331,10 +332,11 @@ useEffect(function() {
   function handleBullets() {
     var sel = getSelection();
     if (!sel || sel.start === sel.end) { setBulletErr("Select some text first."); setTimeout(function() { setBulletErr(null); }, 3000); return; }
-    var selected = md.slice(sel.start, sel.end).trim();
+    var sel2 = sel;
+    var selected = md.slice(sel2.start, sel2.end).trim();
     setBulleting(true); setBulletErr(null);
     callClaude("Reformat the following text so each sentence is a separate bullet point using a dash (-). Do not add, remove, or change words. Every bullet must be at least 4 words. Return only the bullet points.\n\n" + selected)
-      .then(function(r) { if (r) replaceSelection(sel, r); })
+      .then(function(r) { if (r) replaceSelection(sel2, r); })
       .catch(function(e) { setBulletErr(e.message); setTimeout(function() { setBulletErr(null); }, 6000); })
       .then(function() { setBulleting(false); });
   }
@@ -342,13 +344,14 @@ useEffect(function() {
   function handleShorten() {
     var sel = getSelection();
     if (!sel || sel.start === sel.end) { setShortenErr("Select some text first."); setTimeout(function() { setShortenErr(null); }, 3000); return; }
-    var selected = md.slice(sel.start, sel.end).trim();
-    var pct = parseInt(shortenPct, 10);
+    var sel2 = sel;
+    var selected = md.slice(sel2.start, sel2.end).trim();
+    var pct = shortenPct;
     if (isNaN(pct) || pct < 1 || pct > 99) { setShortenErr("Enter a % between 1 and 99."); setTimeout(function() { setShortenErr(null); }, 3000); return; }
     var targetWords = Math.round(selected.split(/\s+/).filter(Boolean).length * (1 - pct / 100));
     setShortening(true); setShortenErr(null);
     callClaude("Summarise the following text by shortening it by approximately " + pct + "% (target: ~" + targetWords + " words). Keep all important details: numbers, evidence, key points, names, dates. Remove only fluff and repetition. You may restructure prose into bullets where helpful, but every bullet must be at least 4 words. Preserve tables. Return only the rewritten text.\n\n" + selected)
-      .then(function(r) { if (r) replaceSelection(sel, r); })
+      .then(function(r) { if (r) replaceSelection(sel2, r); })
       .catch(function(e) { setShortenErr(e.message); setTimeout(function() { setShortenErr(null); }, 6000); })
       .then(function() { setShortening(false); });
   }
@@ -363,12 +366,12 @@ useEffect(function() {
     var entry = { id: Date.now(), preview: md.slice(0, 80), date: new Date().toLocaleString(), content: md };
     var next = [entry].concat(history).slice(0, 20);
     setHistory(next);
-    window.storage.set("md_history", JSON.stringify(next)).catch(function() {});
+    try { localStorage.setItem("md_history", JSON.stringify(next)); } catch(e) {}
     setSaved(true);
     setTimeout(function() { setSaved(false); }, 2000);
   }
 
-  function copyText(t) {
+  function copyText(t: string) {
     var ta = document.createElement("textarea");
     ta.value = t; ta.style.position = "fixed"; ta.style.opacity = "0";
     document.body.appendChild(ta); ta.focus(); ta.select();
@@ -378,7 +381,7 @@ useEffect(function() {
   var hBtn   = { background: "none", border: "1px solid " + border, color: text, borderRadius: 6, padding: "4px 9px", cursor: "pointer", fontSize: 11, whiteSpace: "nowrap" };
   var hBtnOn = { background: accent, border: "1px solid " + accent, color: "#fff", borderRadius: 6, padding: "4px 9px", cursor: "pointer", fontSize: 11, whiteSpace: "nowrap" };
   var tbBtn  = { background: "none", border: "1px solid " + border, color: text, borderRadius: 4, padding: "3px 7px", cursor: "pointer", fontSize: 11, fontFamily: "monospace" };
-  var aiBtn  = function(col, busy) { return { background: "none", border: "1px solid " + col, color: busy ? accent : col, borderRadius: 4, padding: "3px 9px", cursor: "pointer", fontSize: 11, fontWeight: 700, opacity: busy ? 0.6 : 1 }; };
+  var aiBtn  = function(col: string, busy: boolean) { return { background: "none", border: "1px solid " + col, color: busy ? accent : col, borderRadius: 4, padding: "3px 9px", cursor: "pointer", fontSize: 11, fontWeight: 700, opacity: busy ? 0.6 : 1 }; };
 
   var css = [
     ".mdp [data-line]:hover{background:" + (dark ? "#ffffff0a" : "#6c63ff0a") + ";border-radius:4px}",
@@ -442,7 +445,7 @@ useEffect(function() {
               {panel === "outline"
                 ? headings.length === 0
                   ? <div style={{ color:muted, fontSize:12, marginTop:8 }}>No headings yet.</div>
-                  : headings.map(function(h, i) {
+                  : headings.map(function(h: {level: number, text: string, line: number}, i: number) {
                       return <div key={i} onClick={function() { jumpToLine(h.line); }} style={{ paddingLeft:(h.level-1)*10, marginBottom:4, fontSize:12, color: h.level===1 ? text : h.level===2 ? accent : muted, fontWeight: h.level<=2 ? 600 : 400, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", cursor:"pointer" }}>{"#".repeat(h.level)} {h.text}</div>;
                     })
                 : history.length === 0
