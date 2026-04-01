@@ -11,25 +11,25 @@ export function inlineFmt(s: string) {
 }
 
 export function parseMarkdown(md: string) {
-  var lines = md.split("\n");
-  var out = "";
-  var i = 0;
+  const lines = md.split("\n");
+  let out = "";
+  let i = 0;
   while (i < lines.length) {
-    var line = lines[i];
+    const line = lines[i];
     if (line.startsWith("```")) {
-      var sl = i;
+      const sl = i;
       i++;
-      var code = "";
+      let code = "";
       while (i < lines.length && !lines[i].startsWith("```")) { code += lines[i] + "\n"; i++; }
       i++;
       out += "<pre data-line=\"" + sl + "\"><code>" + code.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").trimEnd() + "</code></pre>\n";
       continue;
     }
     if (/^\|.+\|/.test(line) && i + 1 < lines.length && /^\|[-| :]+\|/.test(lines[i + 1])) {
-      var ts = i;
-      var hdrs = line.split("|").filter(Boolean).map(function(h: string) { return "<th>" + inlineFmt(h.trim()) + "</th>"; }).join("");
+      const ts = i;
+      const hdrs = line.split("|").filter(Boolean).map(function(h: string) { return "<th>" + inlineFmt(h.trim()) + "</th>"; }).join("");
       i += 2;
-      var rows = "";
+      let rows = "";
       while (i < lines.length && /^\|.+\|/.test(lines[i])) {
         rows += "<tr>" + lines[i].split("|").filter(Boolean).map(function(c: string) { return "<td>" + inlineFmt(c.trim()) + "</td>"; }).join("") + "</tr>";
         i++;
@@ -37,9 +37,9 @@ export function parseMarkdown(md: string) {
       out += "<table data-line=\"" + ts + "\"><thead><tr>" + hdrs + "</tr></thead><tbody>" + rows + "</tbody></table>\n";
       continue;
     }
-    var hm = line.match(/^(#{1,6}) (.+)/);
+    const hm = line.match(/^(#{1,6}) (.+)/);
     if (hm) {
-      var lvl = hm[1].length;
+      const lvl = hm[1].length;
       out += "<h" + lvl + " data-line=\"" + i + "\">" + inlineFmt(hm[2]) + "</h" + lvl + ">\n";
       i++; continue;
     }
@@ -52,13 +52,13 @@ export function parseMarkdown(md: string) {
       i++; continue;
     }
     if (/^(\d+)\. /.test(line) || line.startsWith("- ")) {
-      var ls = i;
-      var isOl = /^(\d+)\. /.test(line);
-      var tag = isOl ? "ol" : "ul";
-      var items = "";
+      const ls = i;
+      const isOl = /^(\d+)\. /.test(line);
+      const tag = isOl ? "ol" : "ul";
+      let items = "";
       while (i < lines.length && (/^(\d+)\. /.test(lines[i]) || lines[i].startsWith("- ") || lines[i].startsWith("  "))) {
-        var li = lines[i];
-        var cb = li.match(/^[-*] \[(x| )\] (.+)/i);
+        const li = lines[i];
+        const cb = li.match(/^[-*] \[(x| )\] (.+)/i);
         if (cb) {
           items += "<li style=\"list-style:none\"><input type=\"checkbox\" disabled" + (cb[1].toLowerCase() === "x" ? " checked" : "") + "/> " + inlineFmt(cb[2]) + "</li>";
         } else {
