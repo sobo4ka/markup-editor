@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { parseMarkdown } from "./markdownUtils";
 
 var CHALLENGES = [
   { title: "Table Challenge", prompt: "Write a table comparing 3 programming languages (name, type, use case)." },
@@ -39,84 +40,6 @@ var TOOLBAR = [
 ];
 
 var INITIAL = "# Welcome to Viks markup editor\n\nStart writing Markdown here and see it rendered live on the right! \n\n## Features to try\n- **Live preview** as you type\n- Syntax cheat sheet panel\n- Document outline in the left panel\n- Validation hints below the editor\n- Click any element in the preview to jump to it in the editor\n- Select text and press Concise, Bullets, or Shorten\n\n### Quick example\n\n```js\nconst greet = function(name) { return 'Hello ' + name; };\nconsole.log(greet('World'));\n```\n\n| Feature | Status |\n|---------|--------|\n| Live preview | Done |\n| Cheat sheet | Done |\n| Click-to-navigate | Done |\n| AI tools | Done |\n\n> The best way to learn Markdown is to write a lot of it.\n\nHappy writing!\n";
-
-function inlineFmt(s: string) {
-  return s
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, "<img alt=\"$1\" src=\"$2\" style=\"max-width:100%\"/>")
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "<a href=\"$2\" target=\"_blank\">$1</a>")
-    .replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>")
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    .replace(/~~(.+?)~~/g, "<del>$1</del>")
-    .replace(/`([^`]+)`/g, "<code>$1</code>");
-}
-
-function parseMarkdown(md: string) {
-  var lines = md.split("\n");
-  var out = "";
-  var i = 0;
-  while (i < lines.length) {
-    var line = lines[i];
-    if (line.startsWith("```")) {
-      var sl = i;
-      i++;
-      var code = "";
-      while (i < lines.length && !lines[i].startsWith("```")) { code += lines[i] + "\n"; i++; }
-      i++;
-      out += "<pre data-line=\"" + sl + "\"><code>" + code.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").trimEnd() + "</code></pre>\n";
-      continue;
-    }
-    if (/^\|.+\|/.test(line) && i + 1 < lines.length && /^\|[-| :]+\|/.test(lines[i + 1])) {
-      var ts = i;
-      var hdrs = line.split("|").filter(Boolean).map(function(h: string) { return "<th>" + inlineFmt(h.trim()) + "</th>"; }).join("");
-      i += 2;
-      var rows = "";
-      while (i < lines.length && /^\|.+\|/.test(lines[i])) {
-        rows += "<tr>" + lines[i].split("|").filter(Boolean).map(function(c: string) { return "<td>" + inlineFmt(c.trim()) + "</td>"; }).join("") + "</tr>";
-        i++;
-      }
-      out += "<table data-line=\"" + ts + "\"><thead><tr>" + hdrs + "</tr></thead><tbody>" + rows + "</tbody></table>\n";
-      continue;
-    }
-    var hm = line.match(/^(#{1,6}) (.+)/);
-    if (hm) {
-      var lvl = hm[1].length;
-      out += "<h" + lvl + " data-line=\"" + i + "\">" + inlineFmt(hm[2]) + "</h" + lvl + ">\n";
-      i++; continue;
-    }
-    if (line.startsWith("> ")) {
-      out += "<blockquote data-line=\"" + i + "\">" + inlineFmt(line.slice(2)) + "</blockquote>\n";
-      i++; continue;
-    }
-    if (line === "---") {
-      out += "<hr data-line=\"" + i + "\"/>\n";
-      i++; continue;
-    }
-    if (/^(\s*)([-*]|\d+\.) /.test(line)) {
-      var ls = i;
-      var items = "";
-      while (i < lines.length && /^(\s*)([-*]|\d+\.) /.test(lines[i])) {
-        var raw = lines[i];
-        if (/^- \[x\] /.test(raw)) {
-          items += "<li class=\"task done\" data-line=\"" + i + "\">\u2705 " + inlineFmt(raw.replace(/^- \[x\] /, "")) + "</li>";
-        } else if (/^- \[ \] /.test(raw)) {
-          items += "<li class=\"task\" data-line=\"" + i + "\">\u2b1c " + inlineFmt(raw.replace(/^- \[ \] /, "")) + "</li>";
-        } else {
-          var txt = raw.replace(/^\s*[-*]\s+/, "").replace(/^\s*\d+\.\s+/, "");
-          items += "<li data-line=\"" + i + "\">" + inlineFmt(txt) + "</li>";
-        }
-        i++;
-      }
-      out += "<ul data-line=\"" + ls + "\">" + items + "</ul>\n";
-      continue;
-    }
-    if (line.trim() === "") { i++; continue; }
-    out += "<p data-line=\"" + i + "\">" + inlineFmt(line) + "</p>\n";
-    i++;
-  }
-  return out;
-}
 
 function extractHeadings(md: string) {
   return md.split("\n").reduce(function(acc: {level: number, text: string, line: number}[], line: string, i: number) {
